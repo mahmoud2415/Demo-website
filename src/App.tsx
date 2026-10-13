@@ -3,9 +3,9 @@ import { categories, initialProducts, type CategoryId, type Product } from './da
 
 type View = 'home' | 'cart' | 'more' | 'admin'
 type OrderMode = 'delivery' | 'pickup' | 'dine-in'
-type CartItem = { product: Product; quantity: number; additions: string[]; note: string }
+type CartItem = { key: string; product: Product; quantity: number; additions: string[]; note: string }
 
-const phone = '201020805451'
+const phone = import.meta.env.VITE_RESTAURANT_WHATSAPP ?? '201020805451'
 const currency = new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP', maximumFractionDigits: 0 })
 
 function Icon({ name }: { name: 'home' | 'bag' | 'cart' | 'more' | 'search' | 'arrow' | 'plus' | 'minus' | 'close' | 'admin' }) {
@@ -36,7 +36,8 @@ export default function App() {
   const [selected, setSelected] = useState<Product | null>(null)
   const [cart, setCart] = useState<CartItem[]>(() => {
     const saved = localStorage.getItem('mahmoud-cart')
-    return saved ? JSON.parse(saved) : []
+    const savedItems: Omit<CartItem, 'key'>[] | CartItem[] = saved ? JSON.parse(saved) : []
+    return savedItems.map((item) => ({ ...item, key: 'key' in item ? item.key : `${item.product.id}-${crypto.randomUUID()}` }))
   })
   const [mode, setMode] = useState<OrderMode>('delivery')
   const [toast, setToast] = useState('')
@@ -57,14 +58,14 @@ export default function App() {
     setCart((current) => {
       const existing = current.find((item) => item.product.id === product.id && item.note === note && item.additions.join('|') === additions.join('|'))
       if (existing) return current.map((item) => item === existing ? { ...item, quantity: item.quantity + 1 } : item)
-      return [...current, { product, quantity: 1, additions, note }]
+      return [...current, { key: `${product.id}-${crypto.randomUUID()}`, product, quantity: 1, additions, note }]
     })
     setSelected(null)
     setToast(`أضفنا ${product.name} للسلة`)
   }
 
-  function changeQuantity(productId: string, direction: number) {
-    setCart((current) => current.flatMap((item) => item.product.id === productId ? (item.quantity + direction > 0 ? [{ ...item, quantity: item.quantity + direction }] : []) : [item]))
+  function changeQuantity(itemKey: string, direction: number) {
+    setCart((current) => current.flatMap((item) => item.key === itemKey ? (item.quantity + direction > 0 ? [{ ...item, quantity: item.quantity + direction }] : []) : [item]))
   }
 
   function openWhatsApp() {
@@ -148,9 +149,9 @@ function ProductModal({ product, onClose, onAdd }: { product: Product; onClose: 
   return <div className="modal-backdrop" role="presentation" onMouseDown={onClose}><article className="product-modal" role="dialog" aria-modal="true" aria-label={product.name} onMouseDown={(event) => event.stopPropagation()}><button className="close-button" onClick={onClose} aria-label="إغلاق"><Icon name="close"/></button><img className="modal-image" src={product.image} alt={product.name}/><div className="modal-body"><span className="eyebrow">اختيار محمود</span><div className="modal-title"><h2>{product.name}</h2><strong>{currency.format(product.price)}</strong></div><p>{product.description}</p>{product.additions?.length ? <div className="additions"><h3>زوّد اللي بتحبه <small>اختياري</small></h3>{product.additions.map((addition) => <label key={addition.name}><input type="checkbox" checked={additions.includes(addition.name)} onChange={() => setAdditions((current) => current.includes(addition.name) ? current.filter((name) => name !== addition.name) : [...current, addition.name])}/><span>{addition.name}</span><b>+{currency.format(addition.price)}</b></label>)}</div> : null}<label className="note-field"><span>ملاحظاتك</span><textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="مثلاً: من غير بصل" rows={2}/></label><button className="primary-button full" onClick={() => onAdd(product, additions, note)}>أضف للسلة <strong>{currency.format(price)}</strong></button></div></article></div>
 }
 
-function CartView({ cart, mode, subtotal, onMode, onBack, onChange, onCheckout }: { cart: CartItem[]; mode: OrderMode; subtotal: number; onMode: (mode: OrderMode) => void; onBack: () => void; onChange: (id: string, direction: number) => void; onCheckout: () => void }) {
+function CartView({ cart, mode, subtotal, onMode, onBack, onChange, onCheckout }: { cart: CartItem[]; mode: OrderMode; subtotal: number; onMode: (mode: OrderMode) => void; onBack: () => void; onChange: (itemKey: string, direction: number) => void; onCheckout: () => void }) {
   const modes: { id: OrderMode; title: string; subtitle: string }[] = [{ id: 'delivery', title: 'توصيل', subtitle: 'لحد باب البيت' }, { id: 'pickup', title: 'استلام', subtitle: 'جاهز في الفرع' }, { id: 'dine-in', title: 'أكل في المكان', subtitle: 'نحضره على مزاجك' }]
-  return <section className="cart-page"><button className="back-link" onClick={onBack}>→ رجوع للمنيو</button><span className="eyebrow">جاهز للطلب؟</span><h1>سلتك</h1>{cart.length === 0 ? <div className="cart-empty"><div>🍔</div><h2>لسه السلة فاضية</h2><p>اختار حاجة تظبط مودك ونرجع هنا.</p><button className="primary-button" onClick={onBack}>شوف المنيو</button></div> : <><div className="cart-items">{cart.map((item) => <article className="cart-item" key={`${item.product.id}-${item.note}`}><img src={item.product.image} alt=""/><div><h3>{item.product.name}</h3>{item.additions.length ? <p>{item.additions.join('، ')}</p> : null}{item.note ? <p>“{item.note}”</p> : null}<strong>{currency.format(item.product.price)}</strong></div><div className="quantity"><button onClick={() => onChange(item.product.id, 1)}><Icon name="plus"/></button><span>{item.quantity}</span><button onClick={() => onChange(item.product.id, -1)}><Icon name="minus"/></button></div></article>)}</div><div className="order-mode"><div className="section-heading"><div><span className="eyebrow">تختار إزاي؟</span><h2>طريقة الطلب</h2></div></div><div className="mode-options">{modes.map((item) => <button key={item.id} className={mode === item.id ? 'active' : ''} onClick={() => onMode(item.id)}><strong>{item.title}</strong><span>{item.subtitle}</span></button>)}</div></div><div className="checkout"><div><span>إجمالي الطلب</span><strong>{currency.format(subtotal)}</strong></div><button className="primary-button full" onClick={onCheckout}>كمّل على واتساب <Icon name="arrow"/></button><small>هتقدر تراجع العنوان والتأكيد مع المطعم على واتساب.</small></div></>}</section>
+  return <section className="cart-page"><button className="back-link" onClick={onBack}>→ رجوع للمنيو</button><span className="eyebrow">جاهز للطلب؟</span><h1>سلتك</h1>{cart.length === 0 ? <div className="cart-empty"><div>🍔</div><h2>لسه السلة فاضية</h2><p>اختار حاجة تظبط مودك ونرجع هنا.</p><button className="primary-button" onClick={onBack}>شوف المنيو</button></div> : <><div className="cart-items">{cart.map((item) => <article className="cart-item" key={item.key}><img src={item.product.image} alt=""/><div><h3>{item.product.name}</h3>{item.additions.length ? <p>{item.additions.join('، ')}</p> : null}{item.note ? <p>“{item.note}”</p> : null}<strong>{currency.format(item.product.price)}</strong></div><div className="quantity"><button onClick={() => onChange(item.key, 1)}><Icon name="plus"/></button><span>{item.quantity}</span><button onClick={() => onChange(item.key, -1)}><Icon name="minus"/></button></div></article>)}</div><div className="order-mode"><div className="section-heading"><div><span className="eyebrow">تختار إزاي؟</span><h2>طريقة الطلب</h2></div></div><div className="mode-options">{modes.map((item) => <button key={item.id} className={mode === item.id ? 'active' : ''} onClick={() => onMode(item.id)}><strong>{item.title}</strong><span>{item.subtitle}</span></button>)}</div></div><div className="checkout"><div><span>إجمالي الطلب</span><strong>{currency.format(subtotal)}</strong></div><button className="primary-button full" onClick={onCheckout}>كمّل على واتساب <Icon name="arrow"/></button><small>هتقدر تراجع العنوان والتأكيد مع المطعم على واتساب.</small></div></>}</section>
 }
 
 function MoreView({ onAdmin }: { onAdmin: () => void }) {
