@@ -30,6 +30,8 @@ Source code will live in Git. Firebase Hosting deploys the production build, wit
 
 The current showcase intentionally renders seeded local data so it can be demonstrated without external accounts. Its Firebase configuration, Firestore rules, environment-variable template, and migration guide are included in the repository. Connecting live Firestore is a launch step after the project owner creates the accounts.
 
+The public menu bundle initializes only the Firebase application. Authentication and Firestore client code should be loaded only when the protected administration area is connected, so visitors do not download dashboard-only code.
+
 ## Constraints
 
 - Build static/client-side flows only in the MVP.

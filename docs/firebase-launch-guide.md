@@ -6,7 +6,7 @@ The demo runs with fictional local data before Firebase is connected. Complete t
 
 Create a Firebase project and Cloudinary account under the business owner's email whenever this becomes a real client site. The project owner—not the developer—should retain recovery access and billing control.
 
-Create a Firebase Web App, copy its public web configuration to a local `.env` based on `.env.example`, and add the administrator email in Firebase Authentication. Web configuration values can be public; service-account keys and Cloudinary API secrets cannot.
+Create a Firebase Web App, copy its public web configuration to a local `.env` based on `.env.example`, and add the administrator email in Firebase Authentication. The application reads these values only in `src/lib/firebase.ts`; do not paste them inside UI components. Web configuration values can be public; service-account keys and Cloudinary API secrets cannot.
 
 ## 2. Enable Firebase services
 
@@ -41,4 +41,3 @@ Connect the custom domain in Firebase Hosting. Firebase provisions TLS automatic
 - Verify each admin can update data and non-admin accounts cannot.
 - Check every Cloudinary image URL, loading state, and mobile layout.
 - Ensure the public WhatsApp number, opening hours, and domain belong to the restaurant.
-
