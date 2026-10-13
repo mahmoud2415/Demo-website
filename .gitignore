@@ -1,0 +1,15 @@
+# Dependencies and builds
+node_modules/
+dist/
+build/
+
+# Local configuration and Firebase tooling
+.env
+.env.*
+!.env.example
+.firebase/
+
+# Logs and local editor state
+*.log
+.DS_Store
+.vscode/
